@@ -1,5 +1,6 @@
 import pygame
 from random import randint as rnum
+from math import sqrt
 
 '''
 * Sheep must flee from the mouse
@@ -35,6 +36,24 @@ class Sheep(pygame.sprite.Sprite):
     def drawSheepCircle(self, window):
         '''Draw self to screen - is own function to directly use draw function'''
         pygame.draw.ellipse(window, self.colour, self.rect, self.border)
+
+    def distanceFromPoint(self, point):
+        '''Gives the distance of the center of the sheep from a point'''
+        distance = sqrt((self.center[0] - point[0])**2 +
+                        (self.center[1] - point[1])**2)
+        return distance
+
+    def moveSheep(self, point):
+        '''Moves the center of the sheep to a particular point'''
+        self.rect.center = point
+        self.center = point
+
+    def mouseProximity(self):
+        '''Sees if the mouse is close enough for the sheep to want to move'''
+        if self.distanceFromPoint(pygame.mouse.get_pos()) <= 50:
+            # print('too close {}'.format(rnum(0,100)))
+            return True
+        return False
 
 
 class Block(pygame.sprite.Sprite):
@@ -129,13 +148,14 @@ class Window():
     def run(self, update=True, *, tick=True, first=False):
         '''Allows the actual window to tick and run and stuff'''
         if first:
-            self.randomNewSheep(10)
+            self.randomNewSheep(1)
         if tick:
             self.clock.tick(self.fps)
         if update:
             self.drawAll()
             pygame.display.flip()
         self.events = pygame.event.get()
+        [i.mouseProximity() for i in self.sheepList]
 
 
 def run():
