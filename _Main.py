@@ -1,6 +1,6 @@
 import pygame
 from random import randint as rnum
-from math import sqrt
+from math import sqrt, atan2, degrees, sin, radians
 
 '''
 * Sheep must flee from the mouse
@@ -45,8 +45,10 @@ class Sheep(pygame.sprite.Sprite):
                         (self.center[1] - point[1])**2)
         return distance
 
-    def moveSheep(self, point):
+    def moveSheep(self, point, adjust=False):
         '''Moves the center of the sheep to a particular point'''
+        if adjust:
+            point = [point[0] + self.center[0], point[1] + self.center[1]]
         self.rect.center = point
         self.center = point
 
@@ -54,8 +56,37 @@ class Sheep(pygame.sprite.Sprite):
         '''Sees if the mouse is close enough for the sheep to want to move'''
         if self.distanceFromPoint(pygame.mouse.get_pos()) <= 50:
             # print('too close {}'.format(rnum(0,100)))
-            return True
+            self.flee()
+            # return True
         return False
+
+    def flee(self):
+        '''Move the sheep as according to the flee functionality'''
+        mus = pygame.mouse.get_pos()
+        # Gives the angle from which to reverse at
+        angle = self.angleFromPoint(mus)
+        moveBy = self.moveAngle(-5, angle)
+        print(moveBy)
+        self.moveSheep(moveBy, True)
+
+    def moveAngle(self, amountToMove, angleToMove):
+        '''Gives the change in x and y you need to move by an amount at a given angle'''
+        # Make sure the x and y are the correct polarity
+        quadrant = 0
+        while angleToMove > 90:
+            angleToMove -= 90
+            quadrant += 1
+
+        # Use sine rule to get correct distances
+        x = amountToMove * sin(radians(180 - (angleToMove + 90)))
+        y = amountToMove * sin(radians(angleToMove))
+
+        # Correct the polarity
+        x = x * {0: -1, 1: -1, 2: 1, 3: 1}[quadrant]
+        y = y * {0: -1, 1: 1, 2: 1, 3: -1}[quadrant]
+
+        # Return to user
+        return x, y
 
     def makeFont(self, *, size=20, colour=[0, 0, 0]):
         '''Draw font onto the screen at a given coordinate'''
@@ -67,9 +98,16 @@ class Sheep(pygame.sprite.Sprite):
     def getOffsetCenter(self, textObject):
         '''Used by makeFont in order to get the offset needed
         to add the text in the right position'''
-        c = self.center 
+        c = self.center
         w, h = textObject.get_rect().width, textObject.get_rect().height
-        return [c[0] - (w/2), c[1] - (h/2)]
+        return [c[0] - (w / 2), c[1] - (h / 2)]
+
+    def angleFromPoint(self, point):
+        '''Gives the angle between two different points'''
+        dy = self.center[1] - point[1]
+        dx = self.center[0] - point[0]
+        z = atan2(dx, dy)
+        return degrees(z) if z > 0 else 360 - abs(degrees(z))
 
 
 class Block(pygame.sprite.Sprite):
