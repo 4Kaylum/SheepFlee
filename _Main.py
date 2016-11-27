@@ -8,10 +8,13 @@ from math import sqrt, atan2, degrees, sin, radians
 
 _GlobalWindowMaxSize = [500, 500]
 _GlobalDefaultBackground = [39, 95, 32]  # [255, 255, 255]
+_GlobalSheepMoveAmount = 5
+_GlobalSheepSlowConstant = 0.5
+_GlobalPanicRadius = 75
 
 
 class Sheep(pygame.sprite.Sprite):
-    '''Fuck you I'm making a better sheep game'''
+    '''A sheep object'''
     sheepLabel = 0  # This is the she sheep can be labelled
 
     def __init__(self, *, size=15, center=[0, 0], colour=[0, 0, 0], border=1):
@@ -24,6 +27,9 @@ class Sheep(pygame.sprite.Sprite):
         self.border = border
         self.label = Sheep.sheepLabel
 
+        # Get fucked, Gerge
+        self.happiness = 1.00  # Percentage
+
         # Generate the actual image
         self.image = pygame.Surface([size, size])
         self.rect = self.image.get_rect()
@@ -32,11 +38,17 @@ class Sheep(pygame.sprite.Sprite):
         self.backgroundRect = self.backgroundImage.get_rect()
         self.rect.center = self.backgroundRect.center = self.center
 
+        # Store some stuff that'll be used for acceleration
+        self.whereMoving = None
+        self.manyMoves = 0
+        self.accExempt = 0
+
         # Increment the sheep label for the other sheepies to enjoy
         Sheep.sheepLabel += 1
 
-    def drawSheepCircle(self, window):
-        '''Draw self to screen - is own function to directly use draw function'''
+    def update(self, window, otherGroup):
+        '''Update all to do with the class'''
+        self.mouseProximity(otherGroup)
         pygame.draw.ellipse(window, [255, 255, 255], self.backgroundRect, 0)
         pygame.draw.ellipse(window, self.colour, self.rect, self.border)
         z, y = self.makeFont()
@@ -55,21 +67,35 @@ class Sheep(pygame.sprite.Sprite):
         self.rect.center = self.backgroundRect.center = point
         self.center = point
 
-    def mouseProximity(self):
-        '''Sees if the mouse is close enough for the sheep to want to move'''
-        if self.distanceFromPoint(pygame.mouse.get_pos()) <= 50:
-            # print('too close {}'.format(rnum(0,100)))
-            self.flee()
-            # return True
-        return False
+    def mouseProximity(self, otherGroup):
+        '''Moves the sheep if the mouse is within its panic radius'''
+        if self.distanceFromPoint(pygame.mouse.get_pos()) <= _GlobalPanicRadius + (self.rect.width / 2) - 1:
+            self.flee(otherGroup)
+        if self.manyMoves < 0:
+            self.moveSheep(self.moveAngle(
+                self.manyMoves, self.whereMoving), True)
+            if self.accExempt == 0:
+                self.manyMoves += _GlobalSheepSlowConstant
+            else:
+                self.accExempt -= 1
+        else:
+            if rnum(0, 50) != 4:
+                return
+            self.manyMoves = rnum(-5, 0)
+            self.accExempt = rnum(0, 20)
+            self.whereMoving = rnum(1, 360)
+            self.moveSheep(self.moveAngle(
+                self.manyMoves, self.whereMoving), True)
+            self.manyMoves += _GlobalSheepSlowConstant
 
-    def flee(self):
+    def flee(self, otherGroup):
         '''Move the sheep as according to the flee functionality'''
         mus = pygame.mouse.get_pos()
         # Gives the angle from which to reverse at
         angle = self.angleFromPoint(mus)
-        moveBy = self.moveAngle(-5, angle)
-        print(moveBy)
+        moveBy = self.moveAngle(-_GlobalSheepMoveAmount, angle)
+        self.manyMoves = -_GlobalSheepMoveAmount
+        self.whereMoving = angle
         self.moveSheep(moveBy, True)
 
     def moveAngle(self, amountToMove, angleToMove):
@@ -89,7 +115,7 @@ class Sheep(pygame.sprite.Sprite):
         y = y * {0: -1, 1: 1, 2: 1, 3: -1}[quadrant]
 
         # Return to user
-        return x, y
+        return [x, y]
 
     def makeFont(self, *, size=20, colour=[0, 0, 0]):
         '''Draw font onto the screen at a given coordinate'''
@@ -139,7 +165,7 @@ _GlobalBorder = [Block(topleft=[0, 0], dimensions=[_GlobalBorderSize, _GlobalWin
 class Window():
     '''Create the window object on which to draw and check events'''
 
-    def __init__(self, *, dimensions=_GlobalWindowMaxSize, title="None", fps=30):
+    def __init__(self, *, dimensions=_GlobalWindowMaxSize, title="None", fps=120):
         '''Create the window object'''
         pygame.init()  # Initialize the pygame module
         pygame.font.init()  # Initialize the pygame font module
@@ -167,16 +193,13 @@ class Window():
         self.window.fill(_GlobalDefaultBackground)
         self.borderImages.draw(self.window)
 
-    def drawSheep(self):
-        '''Draw the sheep onto the screen'''
-        [i.drawSheepCircle(self.window) for i in self.sheepList]
-
-    def drawAll(self):
+    def drawAll(self, drawRadius=False):
         '''Run all of the class' draw functions'''
         self.drawBackground()
-        pygame.draw.circle(
-            self.window, [255, 0, 0], pygame.mouse.get_pos(), 50)  # Completely debug. I think.
-        self.drawSheep()
+        if drawRadius:
+            pygame.draw.circle(
+                self.window, [255, 0, 0], pygame.mouse.get_pos(), _GlobalPanicRadius)  # Completely debug. I think.
+        self.sheepList.update(self.window, self.borderImages)
 
     def newSheep(self, locationList, *, size=15, colour=[0, 0, 0], border=2):
         '''Create a list of sheep objects as given by a list of locations'''
@@ -202,17 +225,16 @@ class Window():
                 return False
         return True
 
-    def run(self, update=True, *, tick=True, first=False):
+    def run(self, update=True, *, tick=True, first=False, drawRadius=False):
         '''Allows the actual window to tick and run and stuff'''
         if first:
-            self.randomNewSheep(1, size=30, border=3)
+            self.randomNewSheep(50, size=30, border=3)
         if tick:
             self.clock.tick(self.fps)
         if update:
-            self.drawAll()
+            self.drawAll(drawRadius)
             pygame.display.flip()
         self.events = pygame.event.get()
-        [i.mouseProximity() for i in self.sheepList]
 
 
 def run():
@@ -220,7 +242,7 @@ def run():
     window = Window()  # Create window
     window.run(first=True)
     while window.checkQuit():  # Check quit button not pressed
-        window.run()  # Window's run function
+        window.run(drawRadius=True)  # Window's run function
 
 
 if __name__ == '__main__':
