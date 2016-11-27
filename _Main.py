@@ -14,7 +14,7 @@ class Sheep(pygame.sprite.Sprite):
     '''Fuck you I'm making a better sheep game'''
     sheepLabel = 0  # This is the she sheep can be labelled
 
-    def __init__(self, *, size=15, center=[0, 0], colour=[0, 0, 0], border=0):
+    def __init__(self, *, size=20, center=[0, 0], colour=[0, 0, 0], border=1):
         '''Create the sheep object'''
         super().__init__()  # Init the class' Pygame sprite process
 
@@ -36,6 +36,8 @@ class Sheep(pygame.sprite.Sprite):
     def drawSheepCircle(self, window):
         '''Draw self to screen - is own function to directly use draw function'''
         pygame.draw.ellipse(window, self.colour, self.rect, self.border)
+        z, y = self.makeFont()
+        window.blit(z, y)
 
     def distanceFromPoint(self, point):
         '''Gives the distance of the center of the sheep from a point'''
@@ -54,6 +56,20 @@ class Sheep(pygame.sprite.Sprite):
             # print('too close {}'.format(rnum(0,100)))
             return True
         return False
+
+    def makeFont(self, *, size=20, colour=[0, 0, 0]):
+        '''Draw font onto the screen at a given coordinate'''
+        font = pygame.font.Font(None, size)
+        text = font.render(str(self.label), 1, colour)
+        text.get_rect().center = self.center
+        return text, self.getOffsetCenter(text)
+
+    def getOffsetCenter(self, textObject):
+        '''Used by makeFont in order to get the offset needed
+        to add the text in the right position'''
+        c = self.center 
+        w, h = textObject.get_rect().width, textObject.get_rect().height
+        return [c[0] - (w/2), c[1] - (h/2)]
 
 
 class Block(pygame.sprite.Sprite):
@@ -148,7 +164,7 @@ class Window():
     def run(self, update=True, *, tick=True, first=False):
         '''Allows the actual window to tick and run and stuff'''
         if first:
-            self.randomNewSheep(1)
+            self.randomNewSheep(10)
         if tick:
             self.clock.tick(self.fps)
         if update:
