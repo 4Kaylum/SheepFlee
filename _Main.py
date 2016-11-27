@@ -7,14 +7,14 @@ from math import sqrt, atan2, degrees, sin, radians
 '''
 
 _GlobalWindowMaxSize = [500, 500]
-_GlobalDefaultBackground = [255, 255, 255]
+_GlobalDefaultBackground = [39, 95, 32]  # [255, 255, 255]
 
 
 class Sheep(pygame.sprite.Sprite):
     '''Fuck you I'm making a better sheep game'''
     sheepLabel = 0  # This is the she sheep can be labelled
 
-    def __init__(self, *, size=20, center=[0, 0], colour=[0, 0, 0], border=1):
+    def __init__(self, *, size=15, center=[0, 0], colour=[0, 0, 0], border=1):
         '''Create the sheep object'''
         super().__init__()  # Init the class' Pygame sprite process
 
@@ -26,15 +26,18 @@ class Sheep(pygame.sprite.Sprite):
 
         # Generate the actual image
         self.image = pygame.Surface([size, size])
-        self.image.fill(_GlobalDefaultBackground)
         self.rect = self.image.get_rect()
-        self.rect.center = self.center
+        self.backgroundImage = pygame.Surface(
+            [size - (2 * border), size - (2 * border)])
+        self.backgroundRect = self.backgroundImage.get_rect()
+        self.rect.center = self.backgroundRect.center = self.center
 
         # Increment the sheep label for the other sheepies to enjoy
         Sheep.sheepLabel += 1
 
     def drawSheepCircle(self, window):
         '''Draw self to screen - is own function to directly use draw function'''
+        pygame.draw.ellipse(window, [255, 255, 255], self.backgroundRect, 0)
         pygame.draw.ellipse(window, self.colour, self.rect, self.border)
         z, y = self.makeFont()
         window.blit(z, y)
@@ -49,7 +52,7 @@ class Sheep(pygame.sprite.Sprite):
         '''Moves the center of the sheep to a particular point'''
         if adjust:
             point = [point[0] + self.center[0], point[1] + self.center[1]]
-        self.rect.center = point
+        self.rect.center = self.backgroundRect.center = point
         self.center = point
 
     def mouseProximity(self):
@@ -161,7 +164,7 @@ class Window():
 
     def drawBackground(self):
         '''Draws only the background onto the window'''
-        self.window.fill([255, 255, 255])
+        self.window.fill(_GlobalDefaultBackground)
         self.borderImages.draw(self.window)
 
     def drawSheep(self):
@@ -175,22 +178,22 @@ class Window():
             self.window, [255, 0, 0], pygame.mouse.get_pos(), 50)  # Completely debug. I think.
         self.drawSheep()
 
-    def newSheep(self, locationList, *, size=15, colour=[0, 0, 0]):
+    def newSheep(self, locationList, *, size=15, colour=[0, 0, 0], border=2):
         '''Create a list of sheep objects as given by a list of locations'''
         locationList = locationList if type(
             locationList) == list else [locationList]
         for i in locationList:
             self.sheepArray.append(
-                Sheep(center=i, colour=[70, 70, 70], border=2))
+                Sheep(center=i, colour=colour, border=border, size=size))
             self.sheepList.add(self.sheepArray[-1])
 
-    def randomNewSheep(self, amount=0, *, size=15, colour=[0, 0, 0]):
+    def randomNewSheep(self, amount=1, *, size=15, colour=[0, 0, 0], border=2):
         '''Creates a certain amount of random sheep, as given'''
         z = []
         for i in range(amount):
             z.append([rnum(5, _GlobalWindowMaxSize[0] - _GlobalBorderSize),
                       rnum(5, _GlobalWindowMaxSize[1] - _GlobalBorderSize)])
-        self.newSheep(z, size=size, colour=colour)
+        self.newSheep(z, size=size, colour=colour, border=border)
 
     def checkQuit(self):
         '''Returns false if the user pressed quit'''
@@ -202,7 +205,7 @@ class Window():
     def run(self, update=True, *, tick=True, first=False):
         '''Allows the actual window to tick and run and stuff'''
         if first:
-            self.randomNewSheep(10)
+            self.randomNewSheep(1, size=30, border=3)
         if tick:
             self.clock.tick(self.fps)
         if update:
